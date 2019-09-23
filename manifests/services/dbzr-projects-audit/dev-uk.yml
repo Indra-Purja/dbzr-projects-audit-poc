@@ -1,0 +1,2 @@
+env:
+  TRACING_COLLECTOR_URL: https://dev-jaeger.ops.babylontech.co.uk:9411/

@@ -1,0 +1,235 @@
+openapi: 3.0.0
+info:
+  version: 0.1.0
+  title: dbzr-projects-audit
+  description: |
+    REST service for querying the audit of data-bazaar projects
+servers:
+  - url: '/dbzr-projects-audit/v1'
+paths:
+  /events:
+    get:
+      operationId: controller.api.v1.get_events
+      description: Get a list of all events
+      responses:
+        '200':
+          description: List of all events
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/events'
+        '500':
+          description: Nope!
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/error'
+    post:
+      operationId: controller.api.v1.post_event
+      description: Add a new event
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/request_event'
+      responses:
+        '201':
+          description: Event added successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/event'
+        '500':
+          description: Nope!
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/error'
+
+  /events/{event_id}:
+    get:
+      operationId: controller.api.v1.get_event
+      description: Get the event with given identifier
+      parameters:
+        - in: path
+          name: event_id
+          schema:
+            type: string
+          required: true
+          description: The ID of the event to fetch details for
+      responses:
+        '200':
+          description: Event detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/event'
+        '500':
+          description: Nope!
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/error'
+  /projects:
+    get:
+      operationId: controller.api.v1.get_projects
+      description: Get a list of all projects
+      responses:
+        '200':
+          description: List of all projects
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/projects'
+        '500':
+          description: Nope!
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/error'
+  /projects/{project_id}:
+    get:
+      operationId: controller.api.v1.get_project
+      description: Get the project with given identifier
+      parameters:
+        - in: path
+          name: project_id
+          schema:
+            type: string
+          required: true
+          description: The ID of the project to fetch
+      responses:
+        '200':
+          description: Project detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/project'
+        '500':
+          description: Nope!
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/error'
+components:
+  schemas:
+    request_event:
+      description: Body of the request to add an event
+      type: object
+      properties:
+        createdBy:
+          type: string
+        type:
+          type: string
+          enum: [create-project, update-project, delete-project]
+        stream:
+          type: string
+          enum: [projects]
+        payload:
+          type: string
+
+    events:
+      description: A list of all events
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        _links:
+          $ref: '#/components/schemas/_links'
+        _embedded:
+          type: object
+          properties:
+            events:
+              type: array
+              items:
+                $ref: '#/components/schemas/event'
+
+    event:
+      description: A data-bazaar service event
+      type: object
+      properties:
+        id:
+          type: string
+          description: An event identifier
+        name:
+          type: string
+          description: Name of the event
+        createdOn:
+          type: string
+          description: Time of event creation
+        createdBy:
+          type: string
+          description: Event originator
+        type:
+          type: string
+          description: Type of event
+        stream:
+          type: string
+        about:
+          type: string
+          description: Identifier of the resource this event is about
+        payload:
+          type: object
+          description: Payload of the event as a json
+        _links:
+          $ref: '#/components/schemas/_links'
+
+    projects:
+      description: A list of all projects available on data-bazaar
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        _links:
+          $ref: '#/components/schemas/_links'
+        _embedded:
+          type: object
+          properties:
+            events:
+              type: array
+              items:
+                $ref: '#/components/schemas/project'
+
+    project:
+      description: Description of a project
+      type: object
+      properties:
+        id:
+          type: string
+          description: A project identifier
+        name:
+          type: string
+          description: Name of the project
+        createdOn:
+          type: string
+          description: Time of the project creation
+        owner:
+          type: string
+          description: Project owner
+        _links:
+          $ref: '#/components/schemas/_links'
+
+    _links:
+      description: Relational link
+      type: object
+      properties:
+        self:
+          type: object
+          properties:
+            href:
+              type: string
+              format: uri
+              description: Self relational link
+
+    error:
+      description: Something went wrong!
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error string

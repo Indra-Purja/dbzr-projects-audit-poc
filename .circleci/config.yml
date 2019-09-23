@@ -1,0 +1,181 @@
+version: 2
+
+prelude: &prelude
+  docker:
+  - image: circleci/python:3.6.4
+  working_directory: ~/babylon
+  environment:
+    CC_TEST_REPORTER_ID: "code-climate->repo->settings->test coverage->test reporter id"
+
+use_docker: &use_docker setup_remote_docker
+
+quay_login: &quay_login
+  run: docker login -u "${DOCKER_USER}" -p "${DOCKER_PASS}" quay.io
+
+prepare_venv: &prepare_venv
+  run:
+    name: Create venv
+    command: python3 -m venv .venv
+
+save_venv: &save_venv
+  save_cache:
+    key: pip-cache-{{ checksum "requirements.txt" }}-{{ checksum "requirements-test.txt" }}
+    paths:
+    - ".venv"
+
+restore_venv: &restore_venv
+  restore_cache:
+    keys:
+    - pip-cache-{{ checksum "requirements.txt" }}-{{ checksum "requirements-test.txt" }}
+
+
+setup_code_climate: &setup_code_climate
+  run:
+    name: setup code climate
+    command: |
+      curl -L -o cc-test-reporter https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64
+      chmod +x cc-test-reporter
+      ./cc-test-reporter before-build
+
+upload_code_climate: &upload_code_climate
+  run:
+    name: upload coverage results
+    command: ./cc-test-reporter after-build -t coverage.py --exit-code $?
+
+only_master: &only_master
+  filters:
+    branches:
+      only:
+      - master
+
+not_master: &not_master
+  filters:
+    branches:
+      ignore:
+      - master
+
+only_tagged: &only_tagged
+  filters:
+    branches:
+      ignore:
+      - /^.*$/
+    tags:
+      only:
+      - /^.*$/
+
+workflows:
+  version: 2
+  build-and-deploy:
+    jobs:
+    - prepare_env:
+        context: babylon
+    - lint:
+        requires:
+        - prepare_env
+        <<: *not_master
+    - format:
+        requires:
+        - prepare_env
+        <<: *not_master
+    - mypy:
+        requires:
+        - prepare_env
+        <<: *not_master
+    - test:
+        requires:
+        - prepare_env
+        <<: *not_master
+    - test-coverage:
+        context: babylon
+        requires:
+        - prepare_env
+        <<: *only_master
+    - build:
+        context: babylon
+        <<: *not_master
+    - tag-latest:
+        context: babylon
+        <<: *only_master
+    - tag-semver:
+        context: babylon
+        <<: *only_tagged
+
+jobs:
+  prepare_env:
+    <<: *prelude
+    steps:
+    - checkout
+    - *restore_venv
+    - *prepare_venv
+    - run: |
+        source .venv/bin/activate
+        make install-test-requirements
+    - *save_venv
+  test:
+    <<: *prelude
+    steps:
+    - checkout
+    - *restore_venv
+    - run: |
+        source .venv/bin/activate
+        make test
+  test-coverage:
+    <<: *prelude
+    steps:
+    - checkout
+    - *restore_venv
+    - *setup_code_climate
+    - run: |
+        source .venv/bin/activate
+        make test
+    - *upload_code_climate
+  lint:
+    <<: *prelude
+    steps:
+    - checkout
+    - *restore_venv
+    - run: |
+        source .venv/bin/activate
+        make lint
+  format:
+    <<: *prelude
+    steps:
+    - checkout
+    - *restore_venv
+    - run: |
+        source .venv/bin/activate
+        make check-format
+  mypy:
+    <<: *prelude
+    steps:
+    - checkout
+    - *restore_venv
+    - run: |
+        source .venv/bin/activate
+        make mypy
+  build:
+    <<: *prelude
+    steps:
+    - checkout
+    - *use_docker
+    - *quay_login
+    - run: make build
+  tag-latest:
+    <<: *prelude
+    steps:
+    - checkout
+    - *use_docker
+    - *quay_login
+    - run: make build
+    - run: make install
+    - run: make tag-latest
+    - run: make deploy-dev
+  tag-semver:
+    <<: *prelude
+    steps:
+    - checkout
+    - *use_docker
+    - *quay_login
+    - run: make pull
+    - run: make tag-semver
+    - run: make deploy-staging

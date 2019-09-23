@@ -1,0 +1,48 @@
+name: dbzr-projects-audit
+image: quay.io/babylonhealth/dbzr-projects-audit
+labels:
+  custom-metrics: true
+resources:
+  limits:
+    cpu: 4
+    memory: 2Gi
+  requests:
+    cpu: 250m
+    memory: 1Gi
+replicaCount: 2
+health:
+  uri: /dbzr-projects-audit/health
+  wait: 30
+httpPort: 8000
+regions:
+- dev-uk
+env:
+  SERVICE_PORT: 8000
+  DEBUG: "false"
+  SWAGGER_UI: true
+  TRACING_ENABLED: true
+  TRACING_SAMPLE_RATE: 0
+  METRICS_ENABLED: true
+  LOGGING_CONFIG: /config/logging.conf
+  SENTRY_DSN: IN_VAULT
+
+kong:
+  name: dbzr-projects-audit
+  strip_uri: false
+  uris: /dbzr-projects-audit
+configs:
+  mount: /config/
+  files:
+  - name: logging.conf.j2
+    dest: logging.conf
+dependencies: []
+metadata:
+  contacts:
+  - name: data-bazaar-team
+    slack: INSERT YOUR SLACK HANDLE HERE
+  team: INSERT YOUR TEAM NAME HERE
+  repo: https://github.com/Babylonpartners/dbzr-projects-audit
+
+  gitTagTemplate: "v{{ version }}"
+
+
