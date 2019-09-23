@@ -40,7 +40,7 @@ class DB:
         return found[0]
 
     def get_all_projects(self):
-        query = "SELECT events.payload FROM projects.events WHERE events.type='create-project' " \
+        query = "SELECT events.payload, events.about FROM projects.events WHERE events.type='create-project' " \
                 "AND events.about NOT IN(SELECT events.about FROM projects.events WHERE events.type='delete-project')"
 
         with self.__get_db_connection() as db_connection:
@@ -50,7 +50,8 @@ class DB:
             return cursor.fetchall()  # paginate this
 
     def get_project(self, project_id):
-        found = list(filter((lambda project: project["payload"]["id"] == project_id), self.get_all_projects()))
+        found = list(filter((lambda project: project["payload"].get("id", project.get("about")) == project_id),
+                            self.get_all_projects()))
         if not found:
             return None
         return found[0]
