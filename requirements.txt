@@ -2,3 +2,5 @@
 babylon-python[connexion]>=29.0.0,<30.0.0
 
 gevent>=1.3.6,<2.0.0
+
+connexion>=2.2.0
